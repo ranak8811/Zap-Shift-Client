@@ -3,6 +3,8 @@ import { useForm } from "react-hook-form";
 import useAuth from "../../../hooks/useAuth";
 import { Link } from "react-router";
 import SocialLogin from "../SocialLogin /SocialLogin";
+import axios from "axios";
+import useAxios from "../../../hooks/useAxios";
 
 const Register = () => {
   const {
@@ -10,18 +12,56 @@ const Register = () => {
     handleSubmit,
     formState: { errors },
   } = useForm();
-  const { createUser } = useAuth();
+  const { createUser, updateUserProfile } = useAuth();
+  const [profilePic, setProfilePic] = React.useState(null);
+  const axiosInstance = useAxios();
 
   const onSubmit = (data) => {
     console.log(data);
     console.log(createUser);
     createUser(data.email, data.password)
-      .then((result) => {
+      .then(async (result) => {
         console.log(result.user);
+
+        // update user info in database
+        const userInfo = {
+          email: data.email,
+          role: "user",
+          created_at: new Date().toISOString(),
+          last_log_in: new Date().toISOString(),
+        };
+
+        const userRes = await axiosInstance.post("/users", userInfo);
+        console.log(userRes.data);
+
+        // update user info in firebase
+        const userProfile = {
+          displayName: data.name,
+          photoURL: profilePic,
+        };
+
+        updateUserProfile(userProfile)
+          .then(() => {
+            console.log("user profile updated");
+          })
+          .catch((error) => {
+            console.error(error);
+          });
       })
       .catch((error) => {
         console.error(error);
       });
+  };
+
+  const handleImageUpload = async (e) => {
+    const image = e.target.files[0];
+    const formData = new FormData();
+    formData.append("image", image);
+    const imageUploadURL = `https://api.imgbb.com/1/upload?&key=${
+      import.meta.env.VITE_imgbb_key
+    }`;
+    const res = await axios.post(imageUploadURL, formData);
+    setProfilePic(res.data.data.url);
   };
 
   return (
@@ -30,6 +70,26 @@ const Register = () => {
         <h1 className="text-5xl font-bold">Create Account</h1>
         <form onSubmit={handleSubmit(onSubmit)}>
           <fieldset className="fieldset">
+            {/* name field */}
+            <label className="label">Your Name</label>
+            <input
+              type="text"
+              {...register("name", { required: true })}
+              className="input"
+              placeholder="Your Name"
+            />
+            {errors.email?.type === "required" && (
+              <p className="text-red-500">Name is required</p>
+            )}
+            {/* name field */}
+            <label className="label">Your Name</label>
+            <input
+              type="file"
+              onChange={handleImageUpload}
+              className="input"
+              placeholder="Your Profile picture"
+            />
+
             {/* email field */}
             <label className="label">Email</label>
             <input
@@ -41,7 +101,7 @@ const Register = () => {
             {errors.email?.type === "required" && (
               <p className="text-red-500">Email is required</p>
             )}
-
+            {/* password field*/}
             <label className="label">Password</label>
             <input
               type="password"
