@@ -66,7 +66,7 @@ const Login = () => {
           <p>
             <small>
               New to this website?{" "}
-              <Link className="btn btn-link" to="/register">
+              <Link state={{ from }} className="btn btn-link" to="/register">
                 Register
               </Link>
             </small>
